@@ -1,0 +1,46 @@
+name: Deploy Web Dashboard to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'lake_don_pedro_water_ski_conditions_dashboard.html'
+      - '.github/workflows/deploy-pages.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Stage GitHub Pages site
+        run: |
+          mkdir -p _site
+          cp lake_don_pedro_water_ski_conditions_dashboard.html _site/index.html
+          cp lake_don_pedro_water_ski_conditions_dashboard.html _site/lake_don_pedro_water_ski_conditions_dashboard.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          name: github-pages-${{ github.run_attempt }}
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
