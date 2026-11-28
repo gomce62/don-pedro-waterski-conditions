@@ -1075,9 +1075,10 @@
                                 </g>
                             </svg>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-water-val" class="text-base font-extrabold text-white">58.0°F</div>
                             <div id="gauge-water-sub" class="text-[10px] text-slate-400">14.4°C surface</div>
+                            <div id="gauge-water-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 57.5°F – 58.5°F</div>
                         </div>
                     </div>
 
@@ -1093,9 +1094,10 @@
                                 </g>
                             </svg>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-air-val" class="text-base font-extrabold text-white">55°F</div>
                             <div id="gauge-air-sub" class="text-[10px] text-slate-400">Moccasin Live (LM: 72°F)</div>
+                            <div id="gauge-air-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 44°F – 66°F</div>
                         </div>
                     </div>
 
@@ -1112,9 +1114,10 @@
                                 </g>
                             </svg>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-wind-val" class="text-base font-extrabold text-white">1.8 mph</div>
                             <div id="gauge-wind-sub" class="text-[10px] text-slate-400">from WNW · <span class="text-orange-400">●</span> gust 3.1 mph</div>
+                            <div id="gauge-wind-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 1–9 mph (14g)</div>
                         </div>
                     </div>
 
@@ -1131,9 +1134,10 @@
                                 </g>
                             </svg>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-waves-val" class="text-base font-extrabold text-white">0.1 ft</div>
                             <div id="gauge-waves-sub" class="text-[10px] text-slate-400">LM open basin: 0.5 ft</div>
+                            <div id="gauge-waves-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 0.1–0.6 ft</div>
                         </div>
                     </div>
 
@@ -1149,9 +1153,10 @@
                                 </g>
                             </svg>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-precip-val" class="text-base font-extrabold text-white">0.0 mm/h</div>
                             <div id="gauge-precip-sub" class="text-[10px] text-emerald-400 font-semibold">0.00 in/h · Dry</div>
+                            <div id="gauge-precip-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 0% · 0.0 mm</div>
                         </div>
                     </div>
 
@@ -1161,9 +1166,10 @@
                         <div class="my-1 flex items-center justify-center h-14">
                             <span id="sky-icon-emoji" class="text-3xl">☀️</span>
                         </div>
-                        <div>
+                        <div class="w-full">
                             <div id="gauge-sky-val" class="text-base font-extrabold text-white">10% clouds</div>
                             <div id="gauge-rain-sub" class="text-[10px] text-slate-400"><span class="text-sky-400">●</span> 0.0 mm/h rain</div>
+                            <div id="gauge-sky-range" class="mt-1 pt-1 border-t border-slate-800/80 text-[10px] font-mono-num text-cyan-300/90 font-semibold">Today: 5–25% clouds</div>
                         </div>
                     </div>
                 </div>
@@ -3070,6 +3076,126 @@
             }
         }
 
+        // Compute today's forecasted min/max ranges for the Current Conditions cards
+        function getTodayForecastRange() {
+            const localNow = getDonPedroLocalNow();
+            const todayKey = localNow.dateKey;
+            const h = state.liveHourlyData;
+            const d = state.liveDailyData;
+
+            let airLowF = null;
+            let airHighF = null;
+            let windMin = null;
+            let windMax = null;
+            let gustMax = null;
+            let cloudMin = null;
+            let cloudMax = null;
+            let precipProbMax = null;
+            let precipSumMm = null;
+
+            if (d && Array.isArray(d.time) && d.time.length > 0) {
+                let di = d.time.indexOf(todayKey);
+                if (di < 0) di = 0;
+                const dMin = Number(d.temperature_2m_min?.[di]);
+                const dMax = Number(d.temperature_2m_max?.[di]);
+                const dWindMax = Number(d.wind_speed_10m_max?.[di]);
+                const dGustMax = Number(d.wind_gusts_10m_max?.[di]);
+                const dProb = Number(d.precipitation_probability_max?.[di]);
+                const dSum = Number(d.precipitation_sum?.[di]);
+
+                if (Number.isFinite(dMin)) airLowF = Math.round(dMin);
+                if (Number.isFinite(dMax)) airHighF = Math.round(dMax);
+                if (Number.isFinite(dWindMax)) windMax = Math.max(0, Math.round(dWindMax));
+                if (Number.isFinite(dGustMax)) gustMax = Math.max(0, Math.round(dGustMax));
+                if (Number.isFinite(dProb)) precipProbMax = Math.max(0, Math.min(100, Math.round(dProb)));
+                if (Number.isFinite(dSum)) precipSumMm = +Math.max(0, dSum).toFixed(1);
+            }
+
+            if (h && Array.isArray(h.time) && h.time.length > 0) {
+                const temps = [];
+                const winds = [];
+                const gusts = [];
+                const clouds = [];
+                const probs = [];
+                for (let i = 0; i < h.time.length; i++) {
+                    const ts = h.time[i];
+                    if (!ts || !ts.startsWith(todayKey)) continue;
+                    const t = Number(h.temperature_2m?.[i]);
+                    const w = Number(h.wind_speed_10m?.[i]);
+                    const g = Number(h.wind_gusts_10m?.[i]);
+                    const c = Number(h.cloud_cover?.[i]);
+                    const p = Number(h.precipitation_probability?.[i]);
+                    if (Number.isFinite(t)) temps.push(t);
+                    if (Number.isFinite(w)) winds.push(w);
+                    if (Number.isFinite(g)) gusts.push(g);
+                    if (Number.isFinite(c)) clouds.push(c);
+                    if (Number.isFinite(p)) probs.push(p);
+                }
+                if (temps.length > 0) {
+                    if (airLowF === null) airLowF = Math.round(Math.min(...temps));
+                    if (airHighF === null) airHighF = Math.round(Math.max(...temps));
+                }
+                if (winds.length > 0) {
+                    windMin = Math.max(0, Math.round(Math.min(...winds)));
+                    const hWindMax = Math.max(windMin, Math.round(Math.max(...winds)));
+                    windMax = windMax !== null ? Math.max(windMax, hWindMax) : hWindMax;
+                }
+                if (gusts.length > 0) {
+                    const hGustMax = Math.max(0, Math.round(Math.max(...gusts)));
+                    gustMax = gustMax !== null ? Math.max(gustMax, hGustMax) : hGustMax;
+                }
+                if (clouds.length > 0) {
+                    cloudMin = Math.max(0, Math.min(100, Math.round(Math.min(...clouds))));
+                    cloudMax = Math.max(cloudMin, Math.min(100, Math.round(Math.max(...clouds))));
+                }
+                if (probs.length > 0 && precipProbMax === null) {
+                    precipProbMax = Math.max(0, Math.min(100, Math.round(Math.max(...probs))));
+                }
+            }
+
+            if (airLowF === null || airHighF === null || windMin === null || windMax === null) {
+                const days = buildSevenDaySkiForecastData();
+                const today = days && days[0];
+                if (today) {
+                    if (airLowF === null) airLowF = Math.min(today.dawn.tempLow, today.midday.tempLow, today.afternoon.tempLow);
+                    if (airHighF === null) airHighF = Math.max(today.dawn.tempHigh, today.midday.tempHigh, today.afternoon.tempHigh);
+                    if (windMin === null) windMin = Math.min(today.dawn.windMin, today.midday.windMin, today.afternoon.windMin);
+                    if (windMax === null) windMax = Math.max(today.dawn.windMax, today.midday.windMax, today.afternoon.windMax);
+                    if (gustMax === null) gustMax = Math.max(today.dawn.gustMax, today.midday.gustMax, today.afternoon.gustMax);
+                    if (precipProbMax === null) precipProbMax = today.maxDayRainPct || 0;
+                    if (precipSumMm === null) precipSumMm = today.dailyPrecipSumMm || 0;
+                }
+            }
+
+            airLowF = airLowF ?? Math.round(state.airTempF - 8);
+            airHighF = airHighF ?? Math.round(state.airTempF + 8);
+            if (airHighF < airLowF) airHighF = airLowF;
+
+            windMin = windMin ?? 1;
+            windMax = Math.max(windMin, windMax ?? Math.max(3, Math.round(state.windMph)));
+            gustMax = Math.max(windMax, gustMax ?? Math.round(windMax * 1.5));
+
+            cloudMin = cloudMin ?? Math.max(0, Math.round((state.cloudsPct || 10) - 5));
+            cloudMax = Math.max(cloudMin, Math.min(100, cloudMax ?? Math.round((state.cloudsPct || 10) + 15)));
+
+            precipProbMax = precipProbMax ?? 0;
+            precipSumMm = precipSumMm ?? 0;
+
+            return {
+                airLowF,
+                airHighF,
+                windMin,
+                windMax,
+                gustMax,
+                waveMinFt: estimateWavesFromWind(windMin),
+                waveMaxFt: estimateWavesFromWind(windMax),
+                precipProbMax,
+                precipSumMm,
+                cloudMin,
+                cloudMax
+            };
+        }
+
         // Main Dashboard Renderer
         function renderDashboard() {
             const waterDisp = formatTemp(state.waterTempF, 1);
@@ -3312,6 +3438,43 @@
                 if (isRaining) skyEmoji.textContent = '🌧️';
                 else if (!daylight.isDaylight) skyEmoji.textContent = '🌙';
                 else skyEmoji.textContent = activeCloudPct > 65 ? '☁️' : (activeCloudPct > 25 ? '🌤️' : '☀️');
+            }
+
+            // 4b. Update Today's Forecasted Range on all 6 Current Conditions Cards
+            const todayRange = getTodayForecastRange();
+            const gWaterRange = document.getElementById('gauge-water-range');
+            const gAirRange = document.getElementById('gauge-air-range');
+            const gWindRange = document.getElementById('gauge-wind-range');
+            const gWavesRange = document.getElementById('gauge-waves-range');
+            const gPrecipRange = document.getElementById('gauge-precip-range');
+            const gSkyRange = document.getElementById('gauge-sky-range');
+
+            if (gWaterRange) {
+                gWaterRange.textContent = `Today: ${formatTemp(state.waterTempF - 0.5, 1)} – ${formatTemp(state.waterTempF + 0.5, 1)}`;
+            }
+            if (gAirRange) {
+                gAirRange.textContent = `Today: ${formatTemp(todayRange.airLowF, 0)} – ${formatTemp(todayRange.airHighF, 0)}`;
+            }
+            if (gWindRange) {
+                const windRangeTxt = todayRange.windMin === todayRange.windMax
+                    ? `${todayRange.windMin} mph`
+                    : `${todayRange.windMin}–${todayRange.windMax} mph`;
+                gWindRange.textContent = `Today: ${windRangeTxt} (${todayRange.gustMax}g)`;
+            }
+            if (gWavesRange) {
+                const waveRangeTxt = todayRange.waveMinFt === todayRange.waveMaxFt
+                    ? `~${todayRange.waveMinFt.toFixed(1)} ft`
+                    : `${todayRange.waveMinFt.toFixed(1)}–${todayRange.waveMaxFt.toFixed(1)} ft`;
+                gWavesRange.textContent = `Today: ${waveRangeTxt}`;
+            }
+            if (gPrecipRange) {
+                gPrecipRange.textContent = `Today: ${todayRange.precipProbMax}% · ${todayRange.precipSumMm.toFixed(1)} mm`;
+            }
+            if (gSkyRange) {
+                const cloudRangeTxt = todayRange.cloudMin === todayRange.cloudMax
+                    ? `${todayRange.cloudMin}%`
+                    : `${todayRange.cloudMin}–${todayRange.cloudMax}%`;
+                gSkyRange.textContent = `Today: ${cloudRangeTxt} clouds`;
             }
 
             const btn805 = document.getElementById('mode-btn-805');
